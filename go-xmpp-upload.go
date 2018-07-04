@@ -19,22 +19,23 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var allowedSlotIp = make(map[string]int)
-var db *sql.DB = nil // database connection pool
+var allowedSlotIP = make(map[string]int)
+var db *sql.DB // database connection pool
 var basePutURL string
 var baseGetURL string
 var uploadDir string
 
+//Upload table entity
 type Upload struct {
-	id            int
-	slot_hash     string
-	jid           string
-	original_name string
-	disk_name     string
-	upload_time   *time.Time
-	file_size     int
-	content_type  string
-	slot_time     *time.Time
+	id           int
+	slotHash     string
+	jid          string
+	originalName string
+	diskName     string
+	uploadTime   *time.Time
+	fileSize     int
+	contentType  string
+	slotTime     *time.Time
 }
 
 func registerSlotHandler(w http.ResponseWriter, r *http.Request) {
@@ -45,7 +46,7 @@ func registerSlotHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	i, ok := allowedSlotIp[ip]
+	i, ok := allowedSlotIP[ip]
 	if !ok || i != 1 {
 		fmt.Println("Not Allowed")
 		http.Error(w, "Not Allowed", http.StatusForbidden)
@@ -54,9 +55,9 @@ func registerSlotHandler(w http.ResponseWriter, r *http.Request) {
 
 	r.ParseForm()
 
-	var jid string = r.FormValue("jid")
-	var fileName string = strings.Replace(r.FormValue("name"), " ", "_", -1)
-	var contentType string = r.FormValue("content_type")
+	var jid = r.FormValue("jid")
+	var fileName = strings.Replace(r.FormValue("name"), " ", "_", -1)
+	var contentType = r.FormValue("content_type")
 	fileSize, err := strconv.Atoi(r.FormValue("size"))
 	if err != nil {
 		fmt.Println("Invalid Size")
@@ -75,8 +76,8 @@ func registerSlotHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	var randomHash string = fmt.Sprintf("%x", sha256.Sum256(randomBytes))
-	var diskName string = randomHash + "_" + fileName
+	var randomHash = fmt.Sprintf("%x", sha256.Sum256(randomBytes))
+	var diskName = randomHash + "_" + fileName
 
 	stmt, err := db.Prepare("INSERT INTO uploads (slot_hash, jid, original_name, disk_name, upload_time, file_size, content_type, slot_time) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id")
 	if err != nil {
@@ -122,12 +123,12 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows.Next()
-	errScan := rows.Scan(&bk.id, &bk.slot_hash, &bk.jid, &bk.original_name, &bk.disk_name, &bk.upload_time, &bk.file_size, &bk.content_type, &bk.slot_time)
+	errScan := rows.Scan(&bk.id, &bk.slotHash, &bk.jid, &bk.originalName, &bk.diskName, &bk.uploadTime, &bk.fileSize, &bk.contentType, &bk.slotTime)
 	if errScan != nil {
 		log.Fatal(errScan)
 	}
 
-	f, err := os.OpenFile(path.Join(uploadDir, bk.disk_name), os.O_WRONLY|os.O_CREATE, 0666)
+	f, err := os.OpenFile(path.Join(uploadDir, bk.diskName), os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -167,13 +168,13 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 	rows.Next()
-	errScan := rows.Scan(&bk.id, &bk.slot_hash, &bk.jid, &bk.original_name, &bk.disk_name, &bk.upload_time, &bk.file_size, &bk.content_type, &bk.slot_time)
+	errScan := rows.Scan(&bk.id, &bk.slotHash, &bk.jid, &bk.originalName, &bk.diskName, &bk.uploadTime, &bk.fileSize, &bk.contentType, &bk.slotTime)
 	if errScan != nil {
 		http.Error(w, "Invalid Hash", http.StatusBadRequest)
 		return
 	}
 
-	http.ServeFile(w, r, path.Join(uploadDir, bk.disk_name))
+	http.ServeFile(w, r, path.Join(uploadDir, bk.diskName))
 
 }
 
@@ -189,7 +190,7 @@ func main() {
 		log.Fatal("env var EJABBERD_PORT_5222_TCP_ADDR missing")
 		return
 	}
-	allowedSlotIp[ejabberdAddress] = 1
+	allowedSlotIP[ejabberdAddress] = 1
 
 	postgresAddress := os.Getenv("POSTGRES_PORT_5432_TCP_ADDR")
 	if len(postgresAddress) == 0 {
@@ -224,19 +225,20 @@ func main() {
 		return
 	}
 
-	putGetUrlHost := os.Getenv("PUT_GET_URL_HOST")
-	if len(putGetUrlHost) == 0 {
+	putGetURLHost := os.Getenv("PUT_GET_URL_HOST")
+	if len(putGetURLHost) == 0 {
 		log.Fatal("env var PUT_GET_URL_HOST missing")
 		return
 	}
-	basePutURL = putGetUrlHost + listeningString + "/upload/%s/%s"
-	baseGetURL = putGetUrlHost + listeningString + "/download/%s/%s"
+	basePutURL = putGetURLHost + listeningString + "/upload/%s/%s"
+	baseGetURL = putGetURLHost + listeningString + "/download/%s/%s"
 
 	envAllowedIPs := os.Getenv("ALLOWED_IPS")
 	if len(envAllowedIPs) != 0 {
 		ipsSplitted := strings.Split(envAllowedIPs, ",")
 		for _, ip := range ipsSplitted {
-			allowedSlotIp[ip] = 1
+			allowedSlotIP[ip] = 1
+
 		}
 	}
 
