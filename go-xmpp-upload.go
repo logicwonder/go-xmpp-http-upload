@@ -1,7 +1,3 @@
-// Copyright 2016 Tobias Hartwich (tobias.hartwich@gmail.com).
-// All rights reserved. Use of this source code is governed by the
-// MIT license that can be found in the LICENSE file.
-
 package main
 
 import (
@@ -9,7 +5,6 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
-	_ "github.com/lib/pq"
 	"io"
 	"log"
 	"net"
@@ -20,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	_ "github.com/lib/pq"
 )
 
 var allowedSlotIp = make(map[string]int)
@@ -43,14 +40,14 @@ type Upload struct {
 func registerSlotHandler(w http.ResponseWriter, r *http.Request) {
 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		fmt.Println("Nicht erlaubt")
+		fmt.Println("Not Allowed")
 		http.Error(w, "Not Allowed", http.StatusForbidden)
 		return
 	}
 
 	i, ok := allowedSlotIp[ip]
 	if !ok || i != 1 {
-		fmt.Println("Nicht erlaubt")
+		fmt.Println("Not Allowed")
 		http.Error(w, "Not Allowed", http.StatusForbidden)
 		return
 	}
@@ -232,8 +229,8 @@ func main() {
 		log.Fatal("env var PUT_GET_URL_HOST missing")
 		return
 	}
-	basePutURL = putGetUrlHost + "/upload/%s/%s"
-	baseGetURL = putGetUrlHost + "/download/%s/%s"
+	basePutURL = putGetUrlHost + listeningString + "/upload/%s/%s"
+	baseGetURL = putGetUrlHost + listeningString + "/download/%s/%s"
 
 	envAllowedIPs := os.Getenv("ALLOWED_IPS")
 	if len(envAllowedIPs) != 0 {
