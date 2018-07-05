@@ -38,6 +38,20 @@ type Upload struct {
 	slotTime     *time.Time
 }
 
+func contactHandler(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	var mobile = r.FormValue("mobile")
+
+	if len(mobile) == 0 {
+		fmt.Println("Invalid Mobile")
+		http.Error(w, "Invalid Mobile", http.StatusBadRequest)
+		return
+	} else {
+		fmt.Println(mobile)
+	}
+
+}
+
 func registerSlotHandler(w http.ResponseWriter, r *http.Request) {
 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
@@ -282,6 +296,7 @@ func main() {
 	http.HandleFunc("/slot", registerSlotHandler)
 	http.HandleFunc("/upload/", uploadHandler)
 	http.HandleFunc("/download/", downloadHandler)
+	http.HandleFunc("/contact/", contactHandler)
 	//http.Handle("/", http.FileServer(http.Dir("./public")))
 
 	err = http.ListenAndServe(listeningString, nil)
